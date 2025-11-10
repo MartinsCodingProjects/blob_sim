@@ -14,14 +14,14 @@ class SceneManager:
         """Initialize scene manager with settings"""
         self.settings = settings
         
-        # World dimensions from settings
+        # Use fixed renderer world dimensions (normalized space)
         if settings:
-            self.world_length = settings.WORLD_LENGTH if hasattr(settings, 'WORLD_LENGTH') else 500
-            self.world_width = settings.WORLD_WIDTH if hasattr(settings, 'WORLD_WIDTH') else 500
-            self.world_height = settings.WORLD_HEIGHT if hasattr(settings, 'WORLD_HEIGHT') else 5
+            self.world_length = settings.RENDERER_WORLD_SIZE if hasattr(settings, 'RENDERER_WORLD_SIZE') else 100
+            self.world_width = settings.RENDERER_WORLD_SIZE if hasattr(settings, 'RENDERER_WORLD_SIZE') else 100
+            self.world_height = settings.RENDERER_WORLD_HEIGHT if hasattr(settings, 'RENDERER_WORLD_HEIGHT') else 5
         else:
-            self.world_length = 500
-            self.world_width = 500
+            self.world_length = 100  # Fixed renderer size
+            self.world_width = 100   # Fixed renderer size
             self.world_height = 5
         
         # Scene entities
@@ -65,15 +65,17 @@ class SceneManager:
     
     def _create_ground(self):
         """Create the main ground plane"""
-        # Semi-transparent ground with mesh structure
+        # Semi-transparent ground with mesh structure  
+        # Try different ground orientation if coordinate mapping doesn't work
         self.ground_entity = Entity(
             model='cube',
-            color=color.rgba(50, 50, 50, 150),  # Semi-transparent dark gray
-            scale=(self.world_length, 0.1, self.world_width),
-            position=(self.world_length / 2, -0.5, self.world_width / 2)
+            color=color.rgba(50, 0, 0, 100),  # Semi-transparent dark red
+            scale=(self.world_length, self.world_width, 0.1),
+            position=(self.world_length / 2, self.world_width / 2, -0.5),
+            # rotation=(0, 0, 0)  # Could rotate ground plane if needed
         )
         
-        logger.debug(f"Ground plane created: {self.world_length}x{self.world_width}")
+        logger.info(f"Ground plane created: {self.world_length}x{self.world_width} at position ({self.world_length / 2}, -0.5, {self.world_width / 2})")
     
     def _create_boundaries(self):
         """Create visible world boundaries and grid lines"""
@@ -87,8 +89,8 @@ class SceneManager:
                 edge = Entity(
                     model='cube',
                     color=edge_color,
-                    scale=(thickness, 1, thickness),
-                    position=(x, 0, z)
+                    scale=(thickness, thickness, 1),
+                    position=(x, z, 0)
                 )
                 self.boundary_entities.append(edge)
         
@@ -98,7 +100,7 @@ class SceneManager:
                 model='cube',
                 color=edge_color,
                 scale=(self.world_length, thickness, thickness),
-                position=(self.world_length / 2, 0, z)
+                position=(self.world_length / 2, z, 0)
             )
             self.boundary_entities.append(edge)
         
@@ -107,8 +109,8 @@ class SceneManager:
             edge = Entity(
                 model='cube',
                 color=edge_color,
-                scale=(thickness, thickness, self.world_width),
-                position=(x, 0, self.world_width / 2)
+                scale=(thickness, self.world_width, thickness),
+                position=(x, self.world_width / 2, 0)
             )
             self.boundary_entities.append(edge)
         
@@ -129,8 +131,8 @@ class SceneManager:
                 grid_line = Entity(
                     model='cube',
                     color=grid_color,
-                    scale=(line_thickness, 0.1, self.world_width),
-                    position=(x, 0, self.world_width / 2)
+                    scale=(line_thickness, self.world_width, 0.1, ),
+                    position=(x, self.world_width / 2, 0)
                 )
                 self.boundary_entities.append(grid_line)
         
@@ -140,8 +142,8 @@ class SceneManager:
                 grid_line = Entity(
                     model='cube',
                     color=grid_color,
-                    scale=(self.world_length, 0.1, line_thickness),
-                    position=(self.world_length / 2, 0, z)
+                    scale=(self.world_length, line_thickness, 0.1),
+                    position=(self.world_length / 2, z, 0)
                 )
                 self.boundary_entities.append(grid_line)
         

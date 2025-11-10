@@ -13,9 +13,9 @@ class Settings:
         self.WORLD_NAME = "Blobbington"
         self.WORLD_HOURS_PER_DAY = 10
         self.WORLD_NIGHT_PERCENTAGE = 0.3
-        self.WORLD_INITIAL_POPULATION = 2
-        self.WORLD_LENGTH = 500
-        self.WORLD_WIDTH = 500
+        self.WORLD_INITIAL_POPULATION = 4
+        self.WORLD_LENGTH = 100
+        self.WORLD_WIDTH = 100
         self.WORLD_HEIGHT = 5
 
         # Blob Settings
