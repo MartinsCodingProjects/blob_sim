@@ -22,8 +22,7 @@ renderer_ursina/
 │   └── data_manager.py         # Network data reception and processing
 ├── data_receiver.py            # [Existing] Network communication
 ├── renderer_settings.py       # [Existing] Configuration
-├── renderer_main_new.py       # New main entry point
-└── ursina_renderer.py         # [Original] Monolithic version
+└── renderer_main.py           # Main entry point
 ```
 
 ### Key Components
@@ -112,9 +111,9 @@ renderer_ursina/
 
 ## Usage
 
-### Running the Refactored Renderer
+### Running the Renderer
 ```bash
-python renderer_ursina/renderer_main_new.py
+python renderer_ursina/renderer_main.py
 ```
 
 ### Controls
@@ -124,12 +123,9 @@ python renderer_ursina/renderer_main_new.py
 - **F1**: Toggle debug info (planned)
 - **F11**: Toggle fullscreen (planned)
 
-## Migration Notes
+## Architecture Benefits
 
-### From Original to Refactored
-The original `ursina_renderer.py` and `renderer_main.py` are preserved for comparison. The new architecture provides the same functionality with better organization.
-
-### Key Differences
+### Key Improvements
 1. **Modular Structure**: Code split into logical components
 2. **Better State Management**: Each subsystem manages its own state
 3. **Improved Error Handling**: Isolated error handling per component
