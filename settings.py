@@ -10,7 +10,7 @@ class Settings:
         self.SIMULATION_FPS = 60  # Frames per second for renderer updates
 
         # World Settings
-        self.WORLD_NAME = "Blobbingen"
+        self.WORLD_NAME = "Blobbington"
         self.WORLD_HOURS_PER_DAY = 10
         self.WORLD_NIGHT_PERCENTAGE = 0.3
         self.WORLD_INITIAL_POPULATION = 2
