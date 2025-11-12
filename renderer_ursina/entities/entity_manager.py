@@ -39,28 +39,27 @@ class CoordinateNormalizer:
         """Convert simulation coordinates to renderer coordinates"""
         if len(sim_position) >= 3:
             x, y, z = sim_position[0], sim_position[1], sim_position[2]
-            print(f"HIIIIIIIIIIIIIINT: {x}, {y}, {z}")
         elif len(sim_position) >= 2:
             x, y, z = sim_position[0], sim_position[1], 0
         else:
             return Vec3(0, 0, 0)
         
-        # Normalize to renderer space (keep 0-100 range to match scene)
-        # Try swapping the coordinate mapping - maybe sim Y should map to renderer X
-        renderer_x = y * self.scale_factor_y  # Sim Y -> Renderer X  
-        renderer_z = x * self.scale_factor_x  # Sim X -> Renderer Z   
+        # Normalize to renderer space (0-100 range to match scene)
+        # First, normalize simulation coordinates to 0-1 range, then scale to renderer space
+        normalized_x = (x / self.sim_size_x) * self.renderer_size  # Sim X -> Renderer X
+        normalized_z = (y / self.sim_size_y) * self.renderer_size  # Sim Y -> Renderer Z
         renderer_y = -0.4  # Place blobs slightly above ground plane (which is at Y = -0.5)
         
         # Debug logging for coordinate mapping
         if hasattr(self, '_debug_count') and self._debug_count < 10:
-            logger.info(f"Coordinate mapping: sim({x:.1f}, {y:.1f}, {z:.1f}) -> renderer({renderer_x:.1f}, {renderer_y:.1f}, {renderer_z:.1f})")
+            logger.info(f"Coordinate mapping: sim({x:.1f}, {y:.1f}, {z:.1f}) -> renderer({normalized_x:.1f}, {renderer_y:.1f}, {normalized_z:.1f})")
+            logger.info(f"Sim world size: {self.sim_size_x}x{self.sim_size_y}, Renderer size: {self.renderer_size}")
             logger.info(f"Scale factors: X={self.scale_factor_x:.3f}, Y={self.scale_factor_y:.3f}")
-            logger.info(f"Ground plane covers X:0-100, Z:0-100 at Y=-0.5")
             self._debug_count += 1
         elif not hasattr(self, '_debug_count'):
             self._debug_count = 1
         
-        return Vec3(renderer_x, renderer_y, renderer_z)
+        return Vec3(normalized_x, renderer_y, normalized_z)
     
     def normalize_radius(self, sim_radius):
         """Convert simulation radius to renderer radius"""
@@ -100,12 +99,27 @@ class EntityManager:
         self.normalizer = CoordinateNormalizer(renderer_size)
         self.sim_world_initialized = False
         
+        # Simulation state tracking for reset detection
+        self.last_world_dimensions = None
+        self.last_blob_radius = None
+        self.connection_lost = False
+        
         logger.info("Entity Manager initialized with coordinate normalization")
     
     def update_from_simulation_data(self, simulation_data):
         """Update all entities based on new simulation data"""
         if not simulation_data:
+            self.connection_lost = True
             return
+        
+        # If connection was lost, mark it as restored
+        if self.connection_lost:
+            logger.info("Simulation connection restored")
+            self.connection_lost = False
+        
+        # Check if simulation parameters have changed and reset if needed
+        if self._should_reset_scene(simulation_data):
+            self._reset_scene()
         
         # Check for world size information and update normalizer
         self._update_world_normalization(simulation_data)
@@ -292,6 +306,13 @@ class EntityManager:
             sim_radius = entity_data['radius']
             normalized_radius = self.normalizer.normalize_radius(sim_radius)
             normalized_data['radius'] = normalized_radius
+            
+            # Debug logging for radius scaling
+            if hasattr(self.normalizer, '_radius_debug_count') and self.normalizer._radius_debug_count < 3:
+                logger.info(f"Radius scaling: sim_radius={sim_radius:.2f} -> normalized_radius={normalized_radius:.2f} (scale_factor={self.normalizer.entity_scale_factor:.3f})")
+                self.normalizer._radius_debug_count += 1
+            elif not hasattr(self.normalizer, '_radius_debug_count'):
+                self.normalizer._radius_debug_count = 1
         
         # Normalize size (alternative to radius)
         if 'size' in entity_data:
@@ -319,6 +340,53 @@ class EntityManager:
     def get_thing_entity(self, thing_id):
         """Get a specific thing entity by ID"""
         return self.thing_entities.get(thing_id)
+    
+    def _should_reset_scene(self, simulation_data):
+        """Check if simulation parameters have changed requiring a scene reset"""
+        # Check world dimensions
+        world_data = simulation_data.get('world_data', {})
+        dimensions = world_data.get('dimensions')
+        if dimensions and len(dimensions) >= 2:
+            current_world_dims = (dimensions[0], dimensions[1])
+            if self.last_world_dimensions and self.last_world_dimensions != current_world_dims:
+                logger.info(f"World dimensions changed: {self.last_world_dimensions} -> {current_world_dims}")
+                return True
+            self.last_world_dimensions = current_world_dims
+        
+        # Check blob radius from first blob (assuming all blobs have similar base radius)
+        blobs_data = simulation_data.get('blobs_data', [])
+        if blobs_data:
+            first_blob = blobs_data[0]
+            current_blob_radius = first_blob.get('radius')
+            if current_blob_radius is not None:
+                if self.last_blob_radius and abs(self.last_blob_radius - current_blob_radius) > 0.1:
+                    logger.info(f"Blob radius changed: {self.last_blob_radius:.2f} -> {current_blob_radius:.2f}")
+                    return True
+                self.last_blob_radius = current_blob_radius
+        
+        return False
+    
+    def _reset_scene(self):
+        """Reset the entire scene - clear all entities and normalization state"""
+        logger.info("Resetting scene due to simulation parameter changes")
+        
+        # Clear all entities
+        self.cleanup()
+        
+        # Reset normalization state
+        self.sim_world_initialized = False
+        self.normalizer = CoordinateNormalizer(self.normalizer.renderer_size)
+        
+        # Reset tracking variables
+        self.last_world_dimensions = None
+        self.last_blob_radius = None
+        
+        logger.info("Scene reset complete - ready for new simulation parameters")
+    
+    def on_connection_lost(self):
+        """Called when connection to simulation is lost"""
+        self.connection_lost = True
+        logger.info("Simulation connection lost - maintaining current state")
     
     def cleanup(self):
         """Clean up all entities"""

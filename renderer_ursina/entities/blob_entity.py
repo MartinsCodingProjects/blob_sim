@@ -25,7 +25,8 @@ class BlobEntity:
         
         # 3D entity
         self.entity = None
-        self.scale = 0.5  # Default blob size
+        # Use normalized radius from simulation data, with fallback to default
+        self.scale = blob_data.get('radius', 0.5)  # Now uses scaled radius from sim data
         
         # Animation properties
         self.target_position = Vec3(self.location[0], self.location[2], self.location[1])
@@ -83,6 +84,13 @@ class BlobEntity:
         # Update direction
         self.direction = blob_data.get('direction', self.direction)
         
+        # Update radius/scale
+        new_radius = blob_data.get('radius', self.scale)
+        if new_radius != self.scale:
+            self.scale = new_radius
+            if self.entity:
+                self.entity.scale = self.scale
+        
         # Update alive status
         new_alive = blob_data.get('alive', self.alive)
         if new_alive != self.alive:
@@ -136,7 +144,7 @@ class BlobEntity:
         # Gentle scale pulsing
         pulse_amount = 0.1
         pulse_speed = 2.0
-        base_scale = self.scale
+        base_scale = self.scale  # Uses actual blob radius
         scale_modifier = 1 + sin(time.time() * pulse_speed) * pulse_amount
         self.entity.scale = base_scale * scale_modifier
     

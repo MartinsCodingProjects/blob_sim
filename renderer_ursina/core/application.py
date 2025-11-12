@@ -109,7 +109,13 @@ class RendererApplication:
             simulation_data = self.data_manager.get_latest_data()
             if simulation_data:
                 # Update entities based on simulation data
+                # The entity manager will handle automatic scene resets if needed
                 self.entity_manager.update_from_simulation_data(simulation_data)
+        else:
+            # Check if we lost connection to trigger entity manager state
+            connection_status = self.data_manager.get_connection_status()
+            if not connection_status.get('connected', False) and not self.entity_manager.connection_lost:
+                self.entity_manager.on_connection_lost()
         
         # Update entity animations/states
         self.entity_manager.update()
@@ -137,6 +143,8 @@ class RendererApplication:
             self._toggle_debug_info()
         elif key == 'f11':
             self._toggle_fullscreen()
+        elif key == 'f5':
+            self._manual_scene_reset()
     
     def _toggle_debug_info(self):
         """Toggle debug information display"""
@@ -147,6 +155,11 @@ class RendererApplication:
         """Toggle fullscreen mode"""
         # Implementation for fullscreen toggle
         logger.info("Fullscreen toggled")
+    
+    def _manual_scene_reset(self):
+        """Manually trigger a scene reset"""
+        logger.info("Manual scene reset triggered")
+        self.entity_manager._reset_scene()
     
     def cleanup(self):
         """Clean up all resources and stop subsystems"""

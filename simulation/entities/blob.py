@@ -24,7 +24,7 @@ class Blob:
         self.health = 100
 
         # init physical properties
-        self.radius = 1.0
+        self.radius = self.settings.BLOB_RADIUS if self.settings else 1.0
         self.visual_range = 3.0
         self.color = "blue"
         self.location = location
@@ -190,5 +190,6 @@ class Blob:
             "color": self.color,
             "state": self.state,
             "alive": self.alive,
-            "direction": direction_converted
+            "direction": direction_converted,
+            "radius": self.radius
         }

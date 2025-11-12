@@ -58,6 +58,7 @@ def main():
     logger.info("  ESC - Toggle mouse lock")
     logger.info("  R - Reset camera")
     logger.info("  F1 - Toggle debug info")
+    logger.info("  F5 - Manual scene reset")
     logger.info("  F11 - Toggle fullscreen")
     logger.info("  Close window or Ctrl+C to exit")
     logger.info("=" * 60)
