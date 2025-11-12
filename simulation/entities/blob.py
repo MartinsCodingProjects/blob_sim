@@ -80,9 +80,9 @@ class Blob:
                 logger.debug(f"Blob {self.name} (ID: {self.id}) attempted to move out of bounds to {new_location}. Movement cancelled.")
                 # Reset position to stay within bounds
                 new_location = (
-                    max(0, min(new_location[0], self.world.length - self.radius)),
-                    max(0, min(new_location[1], self.world.width - self.radius)),
-                    max(0, min(new_location[2], self.world.height - self.radius))
+                    max(0, min(new_location[0], self.world.length - 1)),
+                    max(0, min(new_location[1], self.world.width - 1)),
+                    max(0, min(new_location[2], self.world.height - 1))
                 )
                 self.location = new_location
                 # trigger event that ends movement and makes blob idle, wanting new decision next update

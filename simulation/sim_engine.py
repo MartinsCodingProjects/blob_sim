@@ -18,11 +18,13 @@ class SimEngine:
         self.max_simulation_time = settings.SIMULATION_MAX_TIME # Test for 24 simulation hours (1 day)
         self.time_multiplier = settings.SIMULATION_TIME_MULTIPLIER if settings else 1.0  # Real-time to sim-time ratio
         self.last_update_time = time.time()  # for real-time tracking
+        self.paused = self.settings.paused  # Simulation paused state
 
         # for renderer updates
         self.last_renderer_update_time = 0.0
         self.renderer_update_interval = 1.0 / 10.0  # 10 FPS for renderer updates (less aggressive than 60 FPS)
-        
+        self.start_paused = False
+
         # Network thread setup for renderer communication
         self.renderer_data_queue = Queue(maxsize=10)  # Limit queue to 10 items to prevent backlog
         self.network_thread = None
@@ -39,7 +41,14 @@ class SimEngine:
         logger.info("Simulation engine started")
         
         # Start network thread for renderer communication
-        self.start_network_thread()
+        if self.settings.renderer in ['ursina']:
+            self.start_network_thread()
+        
+        # Check if we should start paused (but don't block initialization)
+        if self.start_paused:
+            print("DEBUG SIM: Starting in paused mode")
+        else:
+            print("DEBUG SIM: Starting in running mode")
         
         self.world = world.World(settings=self.settings)
         self.world.create_initial_population()
@@ -48,6 +57,13 @@ class SimEngine:
     def sim_loop(self):
         logger.info("Simulation Loop started")
         while self.simulation_time < self.max_simulation_time:
+            # Check pause state directly from settings every iteration
+            if self.settings.paused:
+                print(f"DEBUG SIM: Simulation paused, waiting...")
+                while self.settings.paused:
+                    time.sleep(0.1)  # wait until unpaused
+                print(f"DEBUG SIM: Simulation resumed!")
+
             self.sim_ticks += 1
             
             # handle real life timing and set sim time and deltas accordingly
@@ -94,24 +110,40 @@ class SimEngine:
         return renderer_data
     
     def update_and_send_renderer_data(self):
-        self.renderer_ticks += 1
-        renderer_data = self.prepare_renderer_data()
-        serialized_data = DataSerializer.serialize_renderer_data(renderer_data)
-        
-        # Non-blocking: just queue the data for network thread
-        try:
-            self.renderer_data_queue.put_nowait(serialized_data)
-        except:
-            # Queue is full - drop oldest data and add new data to prevent backlog
+        if self.settings.renderer == 'ursina':
+            self.renderer_ticks += 1
+            renderer_data = self.prepare_renderer_data()
+            serialized_data = DataSerializer.serialize_renderer_data(renderer_data)
+            
+            # Non-blocking: just queue the data for network thread
             try:
-                self.renderer_data_queue.get_nowait()  # Remove oldest item
-                self.renderer_data_queue.put_nowait(serialized_data)  # Add newest item
-                #logger.debug("Renderer data queue full, dropped oldest frame")
+                self.renderer_data_queue.put_nowait(serialized_data)
             except:
-                logger.debug("Renderer data queue full, skipping frame")
-        
-        self.last_renderer_update_time = self.current_realtime
-    
+                # Queue is full - drop oldest data and add new data to prevent backlog
+                try:
+                    self.renderer_data_queue.get_nowait()  # Remove oldest item
+                    self.renderer_data_queue.put_nowait(serialized_data)  # Add newest item
+                    #logger.debug("Renderer data queue full, dropped oldest frame")
+                except:
+                    logger.debug("Renderer data queue full, skipping frame")
+            self.last_renderer_update_time = self.current_realtime
+        elif self.settings.renderer == 'pygame':
+            self.renderer_ticks += 1
+            renderer_data = self.prepare_renderer_data()
+            
+            # Non-blocking: just queue the data for network thread
+            try:
+                self.renderer_data_queue.put_nowait(renderer_data)
+            except:
+                # Queue is full - drop oldest data and add new data to prevent backlog
+                try:
+                    self.renderer_data_queue.get_nowait()  # Remove oldest item
+                    self.renderer_data_queue.put_nowait(renderer_data)  # Add newest item
+                    #logger.debug("Renderer data queue full, dropped oldest frame")
+                except:
+                    logger.debug("Renderer data queue full, skipping frame")
+            self.last_renderer_update_time = self.current_realtime
+
     def start_network_thread(self):
         """Start the network thread for renderer communication"""
         self.network_running = True
