@@ -92,8 +92,11 @@ class SimEngine:
         # Update the last update time AFTER calculating delta
         self.last_update_time = self.current_realtime
 
+        # Cap real delta time to prevent huge jumps for more acurate simulation
+        capped_real_delta_time = min(real_delta_time, 0.1) # max delta time jump of 0.1 seconds
+        
         # convert to sim time 
-        sim_delta_time = real_delta_time * self.time_multiplier
+        sim_delta_time = capped_real_delta_time * self.time_multiplier
         self.simulation_time += sim_delta_time
         self.sim_delta_time = sim_delta_time
 
